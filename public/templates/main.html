@@ -21,9 +21,10 @@
     <div class="panel">
         <div class="panel-header">📝 粘贴原始对话</div>
         <div class="panel-body">
-            <textarea id="sourceText" placeholder="将 AI 对话内容粘贴到这里...&#10;&#10;格式示例：&#10;**我:** 帮我写一个排序函数&#10;**AI:** 可以使用快速排序，下面是实现...&#10;```php&#10;function quickSort($arr) { ... }&#10;```&#10;**我:** 这个方案可行"></textarea>
+            <textarea id="sourceText" placeholder="将 AI 对话内容粘贴到这里..."></textarea>
             <div class="toolbar">
                 <button class="btn btn-primary" id="parseBtn">解析</button>
+                <button class="btn btn-secondary btn-sm" id="saveEntryBtn" style="display:none">保存条目</button>
                 <span id="parseStatus" class="status-text"></span>
             </div>
         </div>
@@ -40,6 +41,20 @@
                 <span id="sessionStatus" class="status-text"></span>
             </div>
             <div id="sessionList" class="session-list"></div>
+        </div>
+    </div>
+
+    <div class="panel">
+        <div class="panel-header">
+            📅 日报列表
+            <span class="badge-sm" id="dailyCount"></span>
+        </div>
+        <div class="panel-body">
+            <div class="toolbar" style="margin-bottom:10px">
+                <button class="btn btn-secondary btn-sm" id="loadDailiesBtn">刷新</button>
+                <button class="btn btn-secondary btn-sm" id="generateDailyBtn">生成今日日报</button>
+            </div>
+            <div id="dailyList" class="session-list"></div>
         </div>
     </div>
 </aside>
@@ -74,6 +89,13 @@
         <div class="panel">
             <div class="panel-header">⭐ 关键句 <span class="badge-sm" id="hlCount"></span></div>
             <div class="panel-body" id="hlBody"></div>
+        </div>
+    </div>
+
+    <div id="dailyPanel" style="display:none">
+        <div class="panel">
+            <div class="panel-header">📄 日报预览</div>
+            <div class="panel-body" id="dailyContent" style="font-size:13px;line-height:1.7;white-space:pre-wrap;font-family:var(--font-mono);background:#f8fafc;border-radius:6px;padding:16px"></div>
         </div>
     </div>
 </main>

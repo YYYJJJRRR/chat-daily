@@ -2,6 +2,8 @@
 
 require_once __DIR__ . '/Parser.php';
 require_once __DIR__ . '/OpencodeReader.php';
+require_once __DIR__ . '/Storage.php';
+require_once __DIR__ . '/Generator.php';
 
 $body = json_decode(file_get_contents('php://input'), true) ?? [];
 
@@ -48,6 +50,62 @@ switch (parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH)) {
         } catch (\Throwable $e) {
             echo json_encode(['error' => '加载失败: ' . $e->getMessage()]);
         }
+        break;
+
+    // === Phase 1: Save & Generate ===
+
+    case '/api/save-entry':
+        $date = $body['date'] ?? date('Y-m-d');
+        $source = $body['source'] ?? 'manual';
+        $parsed = $body['parsed'] ?? [];
+        $sessionId = $body['session_id'] ?? null;
+        if (empty($parsed)) {
+            echo json_encode(['error' => '缺少 parsed 数据']);
+            exit;
+        }
+        $storage = new Storage();
+        $id = $storage->saveEntry($date, $source, $parsed, $sessionId);
+        echo json_encode(['id' => $id, 'date' => $date]);
+        break;
+
+    case '/api/generate-daily':
+        $date = $body['date'] ?? date('Y-m-d');
+        $storage = new Storage();
+        $entries = $storage->getEntries($date);
+        if (empty($entries)) {
+            echo json_encode(['error' => "{$date} 没有已保存的条目"]);
+            exit;
+        }
+        $generator = new DailyGenerator();
+        $path = $generator->generate($date, $entries);
+        $content = file_get_contents($path);
+        echo json_encode([
+            'date'    => $date,
+            'path'    => $path,
+            'content' => $content,
+            'entries' => count($entries),
+        ], JSON_UNESCAPED_UNICODE);
+        break;
+
+    case '/api/daily-list':
+        $storage = new Storage();
+        $days = $storage->listDays();
+        echo json_encode(['days' => $days], JSON_UNESCAPED_UNICODE);
+        break;
+
+    case '/api/get-daily':
+        $date = $body['date'] ?? '';
+        if (!$date) {
+            echo json_encode(['error' => '缺少 date']);
+            exit;
+        }
+        $generator = new DailyGenerator();
+        $content = $generator->getDaily($date);
+        if ($content === null) {
+            echo json_encode(['error' => "{$date} 日报不存在"]);
+            exit;
+        }
+        echo json_encode(['date' => $date, 'content' => $content], JSON_UNESCAPED_UNICODE);
         break;
 
     default:

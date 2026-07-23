@@ -18,7 +18,6 @@ class Parser
         $codeBlockContent = [];
 
         foreach ($lines as $line) {
-            // 检测代码块开始/结束
             if (str_starts_with($line, '```')) {
                 if (!$inCodeBlock) {
                     $inCodeBlock = true;
@@ -44,7 +43,6 @@ class Parser
                 continue;
             }
 
-            // 检测对话轮次标记
             $role = $this->detectRole($line);
             if ($role !== null) {
                 if ($currentRole !== null && count($currentContent) > 0) {
@@ -58,7 +56,6 @@ class Parser
                 continue;
             }
 
-            // 检测待办事项
             if (preg_match('/^-\s*\[([ x])\]\s*(.+)$/i', $line, $m)) {
                 $todos[] = [
                     'done'  => trim($m[1]) === 'x',
@@ -69,7 +66,6 @@ class Parser
             $currentContent[] = $line;
         }
 
-        // 最后一段
         if ($currentRole !== null && count($currentContent) > 0) {
             $rounds[] = [
                 'role'    => $currentRole,
@@ -77,11 +73,12 @@ class Parser
             ];
         }
 
-        // 提取高亮句（含 →、结论、决定、注意 等关键词的行）
-        $highlights = $this->extractHighlights($text);
-
-        // 过滤礼貌段落
+        // Phase 3: Enhanced compression
         $rounds = $this->filterPoliteness($rounds);
+        $rounds = $this->removeToolBoilerplate($rounds);
+        $rounds = $this->mergeSimilarAdjacent($rounds);
+
+        $highlights = $this->extractHighlights($text);
 
         return [
             'rounds'      => $rounds,
@@ -99,10 +96,10 @@ class Parser
 
     private function detectRole(string $line): ?string
     {
-        if (preg_match('/^\*\*(你|我|user|you|human|ai|assistant)\s*[:：]\*\*/i', $line)) {
+        if (preg_match('/^\*\*(你|我|user|you|human)\s*[:：]\*\*/i', $line)) {
             return 'user';
         }
-        if (preg_match('/^\*\*(ai|assistant|chatgpt|gpt|model)\s*[:：]\*\*/i', $line)) {
+        if (preg_match('/^\*\*(ai|assistant|chatgpt|gpt|model|bot)\s*[:：]\*\*/i', $line)) {
             return 'assistant';
         }
         return null;
@@ -110,18 +107,112 @@ class Parser
 
     private function cleanContent(array $lines): string
     {
-        // 移除首行角色标记
         $result = preg_replace('/^\*\*(你|我|user|you|human|ai|assistant|chatgpt|gpt|model)\s*[:：]\*\*(\s*)/i', '', $lines[0], 1);
         $lines[0] = $result;
 
-        // 移除纯表情/标点行
         $lines = array_filter($lines, function ($line) {
-            $stripped = preg_replace('/[\s\p{P}\p{S}]/u', '', $line);
+            $trimmed = trim($line);
+            if ($trimmed === '') return false;
+            $stripped = preg_replace('/[\s\p{P}\p{S}]/u', '', $trimmed);
             return $stripped !== '';
         });
 
         return implode("\n", array_values($lines));
     }
+
+    // ── Phase 3: Enhanced redundancy compression ──
+
+    private function filterPoliteness(array $rounds): array
+    {
+        $patterns = [
+            '/^(谢谢|好的|明白|没问题|对的|是的|不客气|不用谢|客气了)/iu',
+            '/^(当然|可以的|这个没问题|可以。)/u',
+            '/^(你好|hello|hi)[\s\p{P}]/iu',
+        ];
+
+        foreach ($rounds as &$round) {
+            $lines = explode("\n", $round['content']);
+            $lines = array_filter($lines, function ($line) use ($patterns) {
+                $trimmed = trim($line);
+                if ($trimmed === '') return false;
+                // Keep lines with substantial content after the politeness
+                foreach ($patterns as $p) {
+                    if (preg_match($p, $trimmed)) {
+                        $rest = preg_replace($p, '', $trimmed);
+                        if (mb_strlen(trim($rest)) < 5) return false;
+                    }
+                }
+                return true;
+            });
+            $round['content'] = implode("\n", array_values($lines));
+        }
+
+        return array_filter($rounds, fn($r) => trim($r['content']) !== '');
+    }
+
+    private function removeToolBoilerplate(array $rounds): array
+    {
+        $patterns = [
+            '/^\[调用工具:.*\]$/iu',
+            '/^\[工具返回:.*\]$/iu',
+            '/^Looking at the/iu',
+            '/^Let me/iu',
+            '/^I\'ll help/iu',
+            '/^根据项目/iu',
+        ];
+
+        foreach ($rounds as &$round) {
+            $lines = explode("\n", $round['content']);
+            $lines = array_filter($lines, function ($line) use ($patterns) {
+                $trimmed = trim($line);
+                foreach ($patterns as $p) {
+                    if (preg_match($p, $trimmed)) return false;
+                }
+                return true;
+            });
+            $round['content'] = implode("\n", array_values($lines));
+        }
+
+        return array_filter($rounds, fn($r) => trim($r['content']) !== '');
+    }
+
+    private function mergeSimilarAdjacent(array $rounds): array
+    {
+        $merged = [];
+        $prev = null;
+
+        foreach ($rounds as $r) {
+            if ($prev === null) {
+                $prev = $r;
+                continue;
+            }
+
+            if ($prev['role'] === $r['role'] && $this->textSimilarity($prev['content'], $r['content']) > 70) {
+                $prev['content'] = $prev['content'] . "\n" . $r['content'];
+            } else {
+                $merged[] = $prev;
+                $prev = $r;
+            }
+        }
+        if ($prev !== null) {
+            $merged[] = $prev;
+        }
+
+        return $merged;
+    }
+
+    private function textSimilarity(string $a, string $b): float
+    {
+        $a = mb_substr($a, 0, 200);
+        $b = mb_substr($b, 0, 200);
+        $lenA = mb_strlen($a);
+        $lenB = mb_strlen($b);
+        if ($lenA === 0 || $lenB === 0) return 0;
+        similar_text($a, $b, $pct);
+        return $pct;
+    }
+
+    // ── Highlight extraction ──
 
     private function extractHighlights(string $text): array
     {
@@ -141,28 +232,5 @@ class Parser
         }
 
         return array_slice($highlights, 0, 20);
-    }
-
-    private function filterPoliteness(array $rounds): array
-    {
-        $patterns = [
-            '/^(谢谢|好的|好的，|明白|没问题|对的|是的|请|你好|hello|hi)[\s\p{P}]/iu',
-            '/^(当然|可以的|可以。|这个没问题)/u',
-        ];
-
-        foreach ($rounds as &$round) {
-            $lines = explode("\n", $round['content']);
-            $lines = array_filter($lines, function ($line) use ($patterns) {
-                $trimmed = trim($line);
-                if ($trimmed === '') return false;
-                foreach ($patterns as $p) {
-                    if (preg_match($p, $trimmed)) return false;
-                }
-                return true;
-            });
-            $round['content'] = implode("\n", array_values($lines));
-        }
-
-        return array_filter($rounds, fn($r) => trim($r['content']) !== '');
     }
 }

@@ -7,7 +7,10 @@ if ($uri === '/' || $uri === '') {
     exit;
 }
 
-$apiRoutes = ['/api/parse', '/api/sessions', '/api/load-session'];
+$apiRoutes = [
+    '/api/parse', '/api/sessions', '/api/load-session',
+    '/api/save-entry', '/api/generate-daily', '/api/daily-list', '/api/get-daily',
+];
 if (in_array($uri, $apiRoutes, true)) {
     header('Content-Type: application/json');
     require __DIR__ . '/../src/index.php';
