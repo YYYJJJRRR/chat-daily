@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 对话日报工具</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz@14..32&family=JetBrains+Mono&display=swap" rel="stylesheet">
+    <link href="/assets/app.css" rel="stylesheet">
+</head>
+<body>
+
+<header class="header">
+    <span class="logo">📋 对话日报</span>
+    <span class="badge">v0.1</span>
+</header>
+
+<div class="app-body">
+
+<aside class="sidebar">
+    <div class="panel">
+        <div class="panel-header">📝 粘贴原始对话</div>
+        <div class="panel-body">
+            <textarea id="sourceText" placeholder="将 AI 对话内容粘贴到这里...&#10;&#10;格式示例：&#10;**我:** 帮我写一个排序函数&#10;**AI:** 可以使用快速排序，下面是实现...&#10;```php&#10;function quickSort($arr) { ... }&#10;```&#10;**我:** 这个方案可行"></textarea>
+            <div class="toolbar">
+                <button class="btn btn-primary" id="parseBtn">解析</button>
+                <span id="parseStatus" class="status-text"></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="panel">
+        <div class="panel-header">
+            💾 opencode 记录
+            <span class="badge-sm" id="sessionCount"></span>
+        </div>
+        <div class="panel-body">
+            <div class="toolbar" style="margin-bottom:10px">
+                <button class="btn btn-secondary btn-sm" id="loadSessionsBtn">加载今日记录</button>
+                <span id="sessionStatus" class="status-text"></span>
+            </div>
+            <div id="sessionList" class="session-list"></div>
+        </div>
+    </div>
+</aside>
+
+<main class="main">
+    <div id="resultArea">
+        <div class="empty-state">
+            <div class="empty-icon">💬</div>
+            <div class="empty-title">粘贴对话开始整理</div>
+            <div class="empty-desc">在左侧粘贴你与 AI 的对话内容，点击「解析」自动分段、提取代码和待办事项</div>
+        </div>
+    </div>
+
+    <div id="parseResult" style="display:none">
+        <div class="stats-bar" id="statsBar"></div>
+
+        <div class="panel">
+            <div class="panel-header">💬 对话轮次 <span class="badge-sm" id="roundsCount"></span></div>
+            <div class="panel-body" id="roundsBody"></div>
+        </div>
+
+        <div class="panel">
+            <div class="panel-header">🧩 代码块 <span class="badge-sm" id="codeCount"></span></div>
+            <div class="panel-body" id="codeBody"></div>
+        </div>
+
+        <div class="panel">
+            <div class="panel-header">✅ 待办事项 <span class="badge-sm" id="todoCount"></span></div>
+            <div class="panel-body" id="todoBody"></div>
+        </div>
+
+        <div class="panel">
+            <div class="panel-header">⭐ 关键句 <span class="badge-sm" id="hlCount"></span></div>
+            <div class="panel-body" id="hlBody"></div>
+        </div>
+    </div>
+</main>
+
+</div>
+
+<script src="/assets/app.js"></script>
+</body>
+</html>
