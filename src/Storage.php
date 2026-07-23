@@ -46,6 +46,20 @@ class Storage
         return $entries;
     }
 
+    public function getEntriesByRange(string $startDate, string $endDate): array
+    {
+        $entries = [];
+        $current = $startDate;
+        while ($current <= $endDate) {
+            $dayEntries = $this->getEntries($current);
+            foreach ($dayEntries as $e) {
+                $entries[] = $e;
+            }
+            $current = date('Y-m-d', strtotime($current . ' +1 day'));
+        }
+        return $entries;
+    }
+
     public function getEntry(string $id): ?array
     {
         $file = $this->entryDir . "/{$id}.json";

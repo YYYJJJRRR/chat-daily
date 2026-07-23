@@ -21,6 +21,8 @@
         sessionStatus: document.getElementById('sessionStatus'),
         loadDailiesBtn: document.getElementById('loadDailiesBtn'),
         generateDailyBtn: document.getElementById('generateDailyBtn'),
+        generateWeeklyBtn: document.getElementById('generateWeeklyBtn'),
+        generateMonthlyBtn: document.getElementById('generateMonthlyBtn'),
         dailyList: document.getElementById('dailyList'),
         dailyCount: document.getElementById('dailyCount'),
         dailyPanel: document.getElementById('dailyPanel'),
@@ -36,6 +38,8 @@
     DOM.loadSessionsBtn.addEventListener('click', loadSessions);
     DOM.generateDailyBtn.addEventListener('click', generateDaily);
     DOM.loadDailiesBtn.addEventListener('click', loadDailyList);
+    DOM.generateWeeklyBtn.addEventListener('click', generateWeekly);
+    DOM.generateMonthlyBtn.addEventListener('click', generateMonthly);
 
     // ── Parse ──
 
@@ -179,6 +183,34 @@
             viewDaily(data.date);
         }).catch(function (err) {
             DOM.generateDailyBtn.disabled = false;
+            alert('生成失败: ' + err.message);
+        });
+    }
+
+    function generateWeekly() {
+        DOM.generateWeeklyBtn.disabled = true;
+        fetch('/api/generate-weekly', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}) })
+        .then(function (r) { return r.json(); }).then(function (data) {
+            DOM.generateWeeklyBtn.disabled = false;
+            if (data.error) { alert(data.error); return; }
+            alert('周报已生成: ' + data.range + ' (' + data.entries + ' 条条目)');
+            loadDailyList();
+        }).catch(function (err) {
+            DOM.generateWeeklyBtn.disabled = false;
+            alert('生成失败: ' + err.message);
+        });
+    }
+
+    function generateMonthly() {
+        DOM.generateMonthlyBtn.disabled = true;
+        fetch('/api/generate-monthly', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}) })
+        .then(function (r) { return r.json(); }).then(function (data) {
+            DOM.generateMonthlyBtn.disabled = false;
+            if (data.error) { alert(data.error); return; }
+            alert('月报已生成: ' + data.month + ' (' + data.entries + ' 条条目)');
+            loadDailyList();
+        }).catch(function (err) {
+            DOM.generateMonthlyBtn.disabled = false;
             alert('生成失败: ' + err.message);
         });
     }

@@ -10,6 +10,7 @@ if ($uri === '/' || $uri === '') {
 $apiRoutes = [
     '/api/parse', '/api/sessions', '/api/load-session',
     '/api/save-entry', '/api/generate-daily', '/api/daily-list', '/api/get-daily',
+    '/api/generate-weekly', '/api/generate-monthly',
 ];
 if (in_array($uri, $apiRoutes, true)) {
     header('Content-Type: application/json');

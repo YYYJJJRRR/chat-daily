@@ -108,6 +108,51 @@ switch (parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH)) {
         echo json_encode(['date' => $date, 'content' => $content], JSON_UNESCAPED_UNICODE);
         break;
 
+    // ── Phase 4: Weekly / Monthly ──
+
+    case '/api/generate-weekly':
+        $date = $body['date'] ?? date('Y-m-d');
+        $ts = strtotime($date);
+        $dayOfWeek = date('w', $ts);
+        $monday = date('Y-m-d', strtotime("-" . ($dayOfWeek ?: 7) . " days", $ts));
+        $sunday = date('Y-m-d', strtotime("+" . (6 - ($dayOfWeek ?: 7)) . " days", $ts));
+
+        $storage = new Storage();
+        $entries = $storage->getEntriesByRange($monday, $sunday);
+        if (empty($entries)) {
+            echo json_encode(['error' => "{$monday} ~ {$sunday} 没有条目"]);
+            exit;
+        }
+        $generator = new DailyGenerator();
+        $path = $generator->generateWeekly($monday, $sunday, $entries);
+        echo json_encode([
+            'range'   => "{$monday} ~ {$sunday}",
+            'path'    => $path,
+            'entries' => count($entries),
+        ], JSON_UNESCAPED_UNICODE);
+        break;
+
+    case '/api/generate-monthly':
+        $date = $body['date'] ?? date('Y-m-d');
+        $yearMonth = date('Y-m', strtotime($date));
+        $startDate = $yearMonth . '-01';
+        $endDate = date('Y-m-t', strtotime($date));
+
+        $storage = new Storage();
+        $entries = $storage->getEntriesByRange($startDate, $endDate);
+        if (empty($entries)) {
+            echo json_encode(['error' => "{$yearMonth} 没有条目"]);
+            exit;
+        }
+        $generator = new DailyGenerator();
+        $path = $generator->generateMonthly($yearMonth, $entries);
+        echo json_encode([
+            'month'   => $yearMonth,
+            'path'    => $path,
+            'entries' => count($entries),
+        ], JSON_UNESCAPED_UNICODE);
+        break;
+
     default:
         http_response_code(404);
         echo json_encode(['error' => 'Not Found']);
