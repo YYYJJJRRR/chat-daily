@@ -1,5 +1,17 @@
 <?php
 
+// Increase PCRE limits for long conversation text
+ini_set('pcre.backtrack_limit', '1000000');
+ini_set('pcre.jit', '0');
+
+// Catch warnings and errors, return as JSON instead of HTML
+set_error_handler(function ($severity, $message, $file, $line) {
+    if (error_reporting() & $severity) {
+        echo json_encode(['error' => "PHP {$severity}: {$message}"]);
+        exit;
+    }
+});
+
 require_once __DIR__ . '/Parser.php';
 require_once __DIR__ . '/OpencodeReader.php';
 require_once __DIR__ . '/Storage.php';
