@@ -19,20 +19,47 @@ class OpencodeReader
         $dayStart = strtotime($date . ' 00:00:00') * 1000;
         $dayEnd = $dayStart + 86400000;
 
+        // Get sessions created on this date
         $stmt = $this->db->prepare(
-            "SELECT id, title, time_created, time_updated, agent, model
-             FROM session
-             WHERE time_created >= :start AND time_created < :end
-             ORDER BY time_created ASC"
+            "SELECT DISTINCT s.id, s.title, s.time_created, s.time_updated, s.agent, s.model
+             FROM session s
+             WHERE s.time_created >= :start AND s.time_created < :end
+             ORDER BY s.time_created ASC"
         );
         $stmt->bindValue(':start', $dayStart, SQLITE3_INTEGER);
         $stmt->bindValue(':end', $dayEnd, SQLITE3_INTEGER);
         $result = $stmt->execute();
 
+        $seen = [];
         $sessions = [];
         while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+            $seen[$row['id']] = true;
             $sessions[] = $row;
         }
+
+        // Also get sessions that have part activity on this date
+        // (catches long-running sessions that span multiple days)
+        $stmt = $this->db->prepare(
+            "SELECT DISTINCT s.id, s.title, s.time_created, s.time_updated, s.agent, s.model
+             FROM session s
+             JOIN part p ON p.session_id = s.id
+             WHERE p.time_created >= :start AND p.time_created < :end
+               AND s.id NOT IN (SELECT id FROM session WHERE time_created >= :start2 AND time_created < :end2)
+             ORDER BY s.time_created ASC"
+        );
+        $stmt->bindValue(':start', $dayStart, SQLITE3_INTEGER);
+        $stmt->bindValue(':end', $dayEnd, SQLITE3_INTEGER);
+        $stmt->bindValue(':start2', $dayStart, SQLITE3_INTEGER);
+        $stmt->bindValue(':end2', $dayEnd, SQLITE3_INTEGER);
+        $result = $stmt->execute();
+
+        while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+            if (!isset($seen[$row['id']])) {
+                $seen[$row['id']] = true;
+                $sessions[] = $row;
+            }
+        }
+
         return $sessions;
     }
 
